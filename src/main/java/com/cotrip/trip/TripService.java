@@ -4,12 +4,7 @@ import com.cotrip.participant.ParticipantService;
 import com.cotrip.trip.DTO.TripRequestPayload;
 import com.cotrip.trip.DTO.TripGetDTO;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -27,7 +22,6 @@ public class TripService {
     @Autowired
     ParticipantService participantService;
 
-    @CacheEvict(value="TripList", allEntries=true)
     public TripGetDTO CreateTrip(TripRequestPayload tripRequestPayload) {
 
         TripModel newTripModel = new TripModel(tripRequestPayload);
@@ -46,7 +40,6 @@ public class TripService {
 
     }
 
-    @Cacheable(value = "TripList", key = "'all'")
     public List<TripGetDTO> getTrips() {
 
         List<TripModel> trips = this.tripRepository.findAll();
@@ -66,7 +59,6 @@ public class TripService {
 
     }
 
-    @Cacheable("Trip")
     public Optional<TripGetDTO>  getTripById(UUID tripId) {
 
         Optional<TripModel> newTripModel = this.tripRepository.findById(tripId);
@@ -80,8 +72,26 @@ public class TripService {
         ));
 
     }
-@CachePut(key = "#tripId",value="Trip")
-@CacheEvict(value="TripList", allEntries=true)
+
+    public List<Optional<TripGetDTO>> getTripsByOwnerEmail(String ownerEmail) {
+
+        List<TripModel> tripModels = this.tripRepository.findByOwnerEmail(ownerEmail);
+        List<Optional<TripGetDTO>> tripGetDTOs = new ArrayList<>();
+
+        for(TripModel tripModel : tripModels) {
+            tripGetDTOs.add( Optional.of(new TripGetDTO(
+                    tripModel.getId()
+                    , tripModel.getDestination()
+                    , tripModel.getStartAt()
+                    , tripModel.getEndAt()
+                    , tripModel.getIsConfirmed()
+            )));
+        }
+
+        return tripGetDTOs;
+
+    }
+
     public Optional<TripGetDTO> UpdateTrip(UUID tripId, TripRequestPayload payload) {
 
         Optional<TripModel>  optionalTripModel = tripRepository.findById(tripId);
@@ -106,7 +116,6 @@ public class TripService {
         ));
     }
 
-    @CachePut(key = "#tripId",value="Trip")
     public Optional<TripGetDTO> ConfirmTrip(UUID tripId) {
 
         Optional<TripModel> optionalTripModel = this.tripRepository.findById(tripId);
