@@ -66,6 +66,8 @@ public class TripService {
 
     }
 
+
+
     @Cacheable("Trip")
     public Optional<TripGetDTO>  getTripById(UUID tripId) {
 
@@ -80,8 +82,34 @@ public class TripService {
         ));
 
     }
-@CachePut(key = "#tripId",value="Trip")
-@CacheEvict(value="TripList", allEntries=true)
+
+    @Cacheable(value = "TripList", key = "'all'")
+    public List<Optional<TripGetDTO>> getTripsByOwnerEmail(String ownerEmail) {
+
+        List<TripModel> tripModels = this.tripRepository.findByOwnerEmail(ownerEmail);
+        List<Optional<TripGetDTO>> tripGetDTOs = new ArrayList<>();
+
+        for(TripModel tripModel : tripModels) {
+            tripGetDTOs.add( Optional.of(new TripGetDTO(
+                    tripModel.getId()
+                    , tripModel.getDestination()
+                    , tripModel.getStartAt()
+                    , tripModel.getEndAt()
+                    , tripModel.getIsConfirmed()
+            )));
+        }
+
+        return tripGetDTOs;
+
+    }
+
+    @CacheEvict(value="TripList", allEntries=true)
+    public void DeleteTrip(UUID tripId) {
+        this.tripRepository.deleteById(tripId);
+    }
+
+    @CachePut(key = "#tripId",value="Trip")
+    @CacheEvict(value="TripList", allEntries=true)
     public Optional<TripGetDTO> UpdateTrip(UUID tripId, TripRequestPayload payload) {
 
         Optional<TripModel>  optionalTripModel = tripRepository.findById(tripId);

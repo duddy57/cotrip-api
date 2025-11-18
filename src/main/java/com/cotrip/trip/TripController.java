@@ -42,8 +42,8 @@ public class TripController {
   @Autowired
   private TripService tripService;
 
-
-  public ResponseEntity<TripCreateResponse> createTrip(@RequestBody TripRequestPayload payload) {
+    @PostMapping("/create-trip")
+    public ResponseEntity<TripCreateResponse> createTrip(@RequestBody TripRequestPayload payload) {
 
     var newTripModel = tripService.CreateTrip(payload);
 
@@ -53,13 +53,13 @@ public class TripController {
 
   }
 
-  @GetMapping
+  @GetMapping("/list-trips")
   public ResponseEntity<List<TripGetDTO>> getAllTrips() {
 
     var trips = tripService.getTrips();
 
     if (trips.isEmpty()) {
-      return ResponseEntity.<List<TripModel>>noContent().build();
+      return ResponseEntity.<List<TripGetDTO>>noContent().build();
     }
 
     return ResponseEntity.ok(trips);
@@ -72,6 +72,19 @@ public class TripController {
 
     return trip.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
   };
+
+@DeleteMapping("/{tripId}")
+public ResponseEntity<String> deleteTrip(@PathVariable UUID tripId) {
+    Optional<TripGetDTO> trip = this.tripService.getTripById(tripId);
+
+    if(trip.isEmpty()) {
+        return ResponseEntity.notFound().build();
+    }
+
+    tripService.DeleteTrip(tripId);
+
+    return ResponseEntity.ok("Trip deleted successfully");
+}
 
   @PutMapping("/{tripId}")
   public ResponseEntity<TripGetDTO> updateTripDetails(@PathVariable UUID tripId, @RequestBody TripRequestPayload payload) {
@@ -93,70 +106,29 @@ public class TripController {
 
   };
 
-  @PostMapping("/{tripId}/new-invite")
-  public ResponseEntity<String> inviteNewParticipants(@PathVariable UUID tripId, @RequestBody ParticipantRequestPayload payload) {
-    Optional<TripGetDTO> trip = tripService.getTripById(tripId);
+    @GetMapping("/{email}/trips-by-email")
+    public ResponseEntity<List<TripModel>> getTripsByEmail(@PathVariable String email) {
+        List<Optional<TripGetDTO>> trips = tripService.getTripsByOwnerEmail(email);
 
-    if(trip.isEmpty()) {
-      return ResponseEntity.notFound().build();
+        if (trips.isEmpty()) {
+            return ResponseEntity.<List<TripModel>>noContent().build();
+        }
+
+        List<TripModel> tripModels = new ArrayList<>();
+
+        for (Optional<TripGetDTO> tripOpt : trips) {
+            tripOpt.ifPresent(tripGetDTO -> {
+                TripModel tripModel = new TripModel();
+                tripModel.setId(tripGetDTO.id());
+                tripModel.setDestination(tripGetDTO.destination());
+                tripModel.setStartAt(tripGetDTO.startAt());
+                tripModel.setEndAt(tripGetDTO.endAt());
+                tripModel.setIsConfirmed(tripGetDTO.isConfirmed());
+                tripModels.add(tripModel);
+            });
+        }
+
+        return ResponseEntity.ok(tripModels);
     }
-
-    ParticipantCreatedResponse participantResponse = this.participantService.registerParticipantToEvent(payload.email(), trip.get().id());
-
-    if(trip.get().isConfirmed()) this.participantService.triggerConfirmationEmailToParticipant(payload.email());
-
-
-    return ResponseEntity.ok().build();
-  };
-
-  @GetMapping("/{tripId}/participants")
-  public ResponseEntity<List<ParticipantData>> getAllParticipants(@PathVariable UUID tripId) {
-    List<ParticipantData> res = this.participantService.getAllParticipantsByTripId(tripId);
-
-    return ResponseEntity.ok(res);
-  }
-
-  @PostMapping("/{tripId}/new-activity")
-  public ResponseEntity<String> createNewActivity(@PathVariable UUID tripId, @RequestBody ActivityRequestPayload payload) {
-      Optional<TripGetDTO> trip = tripService.getTripById(tripId);
-
-      if(trip.isEmpty()) {
-          return ResponseEntity.notFound().build();
-      }
-    ActivityResponse activityResponse = this.activitiesService.registerActivity(payload, trip.get().id());
-
-    return ResponseEntity.ok().build();
-  };
-
-  @GetMapping("/{tripId}/activities")
-  public ResponseEntity<List<ActivityData>> getAllActivities(@PathVariable UUID tripId) {
-    List<ActivityData> res = this.activitiesService.getAllActivitiesForTrip(tripId);
-    return ResponseEntity.ok(res);
-  }
-
-
-  @PostMapping("/{tripId}/new-link")
-  public ResponseEntity<String> createNewLink(@PathVariable UUID tripId, @RequestBody LinkRequestPayload payload) {
-      Optional<TripGetDTO> trip = tripService.getTripById(tripId);
-
-      if(trip.isEmpty()) {
-          return ResponseEntity.notFound().build();
-      }
-
-
-    this.linkService.createLink(payload, trip.get().id());
-
-
-    return ResponseEntity.ok().build();
-  }
-
-  @GetMapping("/{tripId}/links")
-  public ResponseEntity<List<LinkData>> getAllLinks(@PathVariable UUID tripId) {
-    List<LinkData> res = this.linkService.getAllLinkForTrip(tripId);
-    return ResponseEntity.ok(res);
-
-  }
-
-
 
 }
