@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: api
+    depends_on:
+      - cotrip_db
+    ports:
+      - "8080:8080"
+    environment:
+      COTRIP_DATABASE_USER: ${COTRIP_DATABASE_USER}
+      COTRIP_DATABASE_PASSWORD: ${COTRIP_DATABASE_PASSWORD}
+      COTRIP_DATABASE_HOST: ${COTRIP_DATABASE_HOST}
+      COTRIP_DATABASE_PORT: ${COTRIP_DATABASE_PORT}
+      COTRIP_DATABASE_NAME: ${COTRIP_DATABASE_NAME}
+      COTRIP_SERVER_PORT: ${COTRIP_SERVER_PORT}
+      COTRIP_SERVER_ENVIRONMENT: ${COTRIP_SERVER_ENVIRONMENT}
+      COTRIP_MAIL_KEY: ${COTRIP_MAIL_KEY}
+      COTRIP_MAIL_FROM: ${COTRIP_MAIL_FROM}
+    networks:
+      - cotrip_network
+
+  cotrip_db:
+    image: postgres:17-alpine
+    container_name: cotrip_db
+    ports:
+      - ${COTRIP_DATABASE_PORT}:5432
+    environment:
+      POSTGRES_USER: ${COTRIP_DATABASE_USER}
+      POSTGRES_PASSWORD: ${COTRIP_DATABASE_PASSWORD}
+      POSTGRES_DB: ${COTRIP_DATABASE_NAME}
+    networks:
+      - cotrip_network
+
+networks:
+  cotrip_network:
+    driver: bridge
