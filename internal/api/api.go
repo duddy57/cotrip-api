@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -22,32 +21,57 @@ import (
 	"go.uber.org/zap"
 )
 
-type Store interface {
-	CreateTrip(ctx context.Context, pool *pgxpool.Pool, trip pgstore.InsertTripParams) (uuid.UUID, error)
-	GetTrip(ctx context.Context, id uuid.UUID) (pgstore.Trip, error)
-	UpdateTrip(ctx context.Context, params pgstore.UpdateTripParams) error
-
-	GetParticipant(ctx context.Context, participantID uuid.UUID) (pgstore.Participant, error)
-	ConfirmParticipant(ctx context.Context, participantID uuid.UUID) error
-	GetParticipants(ctx context.Context, tripID uuid.UUID) ([]pgstore.Participant, error)
-	InviteParticipantToTrip(ctx context.Context, params pgstore.InviteParticipantToTripParams) (uuid.UUID, error)
-
-	CreateActivity(ctx context.Context, params pgstore.CreateActivityParams) (uuid.UUID, error)
-	GetTripActivities(ctx context.Context, tripID uuid.UUID) ([]pgstore.Activity, error)
-
-	CreateTripLink(ctx context.Context, params pgstore.CreateTripLinkParams) (uuid.UUID, error)
-	GetTripLinks(ctx context.Context, tripID uuid.UUID) ([]pgstore.Link, error)
-}
-
 type API struct {
 	pool   *pgxpool.Pool
-	store  *pgstore.Queries
+	store  pgstore.Querier
 	mailer *infra.Mail
 	logger *zap.Logger
 }
 
 func NewAPI(pool *pgxpool.Pool, mailer *infra.Mail, logger *zap.Logger) API {
 	return API{pool, pgstore.New(pool), mailer, logger}
+}
+
+func NewAPIWithStore(store pgstore.Querier, logger *zap.Logger) API {
+
+	return API{store: store, logger: logger}
+}
+
+func (api *API) PostTrips(w http.ResponseWriter, r *http.Request) *spec.Response {
+	var body spec.PostTripsJSONBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		return spec.PostTripsJSON400Response(spec.Error{Message: err.Error()})
+	}
+
+	if len(body.Destination) < 4 {
+		return spec.PostTripsJSON400Response(struct {
+			Message string `json:"message"`
+		}{Message: "destination must be ate least 4 characters long"})
+	}
+
+	id, err := api.store.InsertTrip(r.Context(), pgstore.InsertTripParams{
+		Destination: body.Destination,
+		OwnerEmail:  string(body.OwnerEmail),
+		OwnerName:   body.OwnerName,
+		StartsAt:    pgtype.Timestamp{Time: body.StartsAt, Valid: true},
+		EndsAt:      pgtype.Timestamp{Time: body.EndsAt, Valid: true},
+	})
+	if err != nil {
+		return spec.PostTripsJSON400Response(spec.Error{Message: "failed to create trip, try again"})
+	}
+
+	go func() {
+
+		if api.mailer == nil {
+			return
+		}
+		if err := api.mailer.SendTripConfirmationEmail(id); err != nil {
+			api.logger.Error("failed to send trip confirmation email", zap.Error(err))
+		}
+	}()
+
+	return spec.PostTripsJSON201Response(spec.CreateTripResponse{TripID: id.String()})
+
 }
 
 func (api *API) PatchParticipantsParticipantIDConfirm(w http.ResponseWriter, r *http.Request, participantID string) *spec.Response {
@@ -89,39 +113,6 @@ func (api *API) PatchParticipantsParticipantIDConfirm(w http.ResponseWriter, r *
 	}
 
 	return spec.PatchParticipantsParticipantIDConfirmJSON204Response(nil)
-
-}
-
-func (api *API) PostTrips(w http.ResponseWriter, r *http.Request) *spec.Response {
-	var body spec.PostTripsJSONBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		return spec.PostTripsJSON400Response(spec.Error{Message: err.Error()})
-	}
-
-	if len(body.Destination) < 4 {
-		return spec.PostTripsJSON400Response(struct {
-			Message string `json:"message"`
-		}{Message: "destination must be ate least 4 characters long"})
-	}
-
-	id, err := api.store.InsertTrip(r.Context(), pgstore.InsertTripParams{
-		Destination: body.Destination,
-		OwnerEmail:  string(body.OwnerEmail),
-		OwnerName:   body.OwnerName,
-		StartsAt:    pgtype.Timestamp{Time: body.StartsAt, Valid: true},
-		EndsAt:      pgtype.Timestamp{Time: body.EndsAt, Valid: true},
-	})
-	if err != nil {
-		return spec.PostTripsJSON400Response(spec.Error{Message: "failed to create trip, try again"})
-	}
-
-	go func() {
-		if err := api.mailer.SendTripConfirmationEmail(id); err != nil {
-			api.logger.Error("failed to send trip confirmation email", zap.Error(err))
-		}
-	}()
-
-	return spec.PostTripsJSON201Response(spec.CreateTripResponse{TripID: id.String()})
 
 }
 
