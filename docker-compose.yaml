@@ -22,6 +22,9 @@ services:
     networks:
       - cotrip_network
       - coolify
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
 
   cotrip_db:
     image: postgres:17-alpine
