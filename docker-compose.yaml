@@ -8,7 +8,7 @@ services:
       cotrip_db:
         condition: service_healthy
     ports:
-      - "8084"
+      - "8084:8084"
     environment:
       COTRIP_DATABASE_USER: ${COTRIP_DATABASE_USER}
       COTRIP_DATABASE_PASSWORD: ${COTRIP_DATABASE_PASSWORD}
