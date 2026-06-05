@@ -25,6 +25,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=coolify"
+      - "traefik.http.services.cotrip-api.loadbalancer.server.port=8084"
 
   cotrip_db:
     image: postgres:17-alpine
