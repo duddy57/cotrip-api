@@ -25,7 +25,7 @@ services:
     image: postgres:17-alpine
     container_name: cotrip_db
     ports:
-      - ${COTRIP_DATABASE_PORT}:5432
+      - 5544:5432
     environment:
       POSTGRES_USER: ${COTRIP_DATABASE_USER}
       POSTGRES_PASSWORD: ${COTRIP_DATABASE_PASSWORD}
