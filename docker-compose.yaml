@@ -3,7 +3,7 @@ version: "3.8"
 services:
   api:
     build: .
-    container_name: api
+    container_name: cotrip_api
     depends_on:
       cotrip_db:
         condition: service_healthy
@@ -21,6 +21,7 @@ services:
       COTRIP_MAIL_FROM: ${COTRIP_MAIL_FROM}
     networks:
       - cotrip_network
+      - coolify
 
   cotrip_db:
     image: postgres:17-alpine
@@ -40,5 +41,7 @@ services:
       - cotrip_network
 
 networks:
+  coolify:
+    external: true
   cotrip_network:
     driver: bridge
