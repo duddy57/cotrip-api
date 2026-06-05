@@ -5,7 +5,8 @@ services:
     build: .
     container_name: api
     depends_on:
-      - cotrip_db
+      cotrip_db:
+        condition: service_healthy
     ports:
       - "8084"
     environment:
@@ -30,6 +31,11 @@ services:
       POSTGRES_USER: ${COTRIP_DATABASE_USER}
       POSTGRES_PASSWORD: ${COTRIP_DATABASE_PASSWORD}
       POSTGRES_DB: ${COTRIP_DATABASE_NAME}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cotrip_db_user_admin -d db_cotrip"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - cotrip_network
 
