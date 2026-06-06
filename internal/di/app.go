@@ -13,6 +13,7 @@ import (
 	"github.com/duddy57/cotrip-api/internal/infra"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/phenpessoa/gutils/netutils/httputils"
@@ -112,6 +113,15 @@ func Run(ctx context.Context) error {
 
 func (app *Application) mount() {
 	apiHandlers := api.NewAPI(app.pool, app.m, app.l)
+
+	app.r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"https://cotrip.sperium.net", "http://localhost:5173"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300,
+	}))
 	app.r.Use(middleware.RequestID)
 	app.r.Use(middleware.Recoverer)
 	app.r.Use(httputils.ChiLogger(app.l.Named("mux")))
