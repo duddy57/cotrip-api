@@ -115,7 +115,7 @@ func (app *Application) mount() {
 	apiHandlers := api.NewAPI(app.pool, app.m, app.l)
 
 	app.r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://cotrip.sperium.net", "http://localhost:5173"},
+		AllowedOrigins:   []string{"https://cotrip-web.vercel.app", "http://localhost:5173"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
